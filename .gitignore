@@ -28,6 +28,10 @@
 *.mod
 *.smod
 
+# Ignore lab2_pdf
+lab2/lab2_pdf/*
+!lab2/lab2_pdf/*.pdf
+
 # Compiled Static libraries
 *.lai
 *.la

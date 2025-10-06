@@ -32,6 +32,9 @@
 lab2/lab2_pdf/*
 !lab2/lab2_pdf/*.pdf
 
+lab3/lab3_pdf/*
+!lab3/lab3_pdf/*.pdf
+
 # Compiled Static libraries
 *.lai
 *.la

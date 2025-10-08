@@ -14,5 +14,5 @@ int cnt_search(int *a, int x, int l, int r) {
 
 int main() {
     int a[6] = {1, 4, 3, 2, 5, 2};
-    cout << cnt_search(a, 2, 0, 5);
+    cout << cnt_search(a, 5, 0, 5) << endl;
 }

@@ -99,6 +99,31 @@ void merge_sort(int *a, int n) {
     merge(L, middle, R, n - middle, a);
 }
 
+void bottom_up_merge_sort(int *a, int n) {
+    int *temp = new int[n];
+    
+    for (int sz = 1; sz < n; sz *= 2) {
+        for (int left = 0; left + sz < n; left += 2 * sz) {
+            int mid = left + sz - 1;
+            int right = std::min(left + 2*sz - 1, n - 1);
+            
+            // merge into temp
+            int i = left, j = mid + 1, k = left;
+            while (i <= mid && j <= right) {
+                temp[k++] = (a[i] <= a[j]) ? a[i++] : a[j++];
+            }
+            while (i <= mid) temp[k++] = a[i++];
+            while (j <= right) temp[k++] = a[j++];
+            
+            // copy back
+            for (int p = left; p <= right; ++p)
+                a[p] = temp[p];
+        }
+    }
+    delete temp;
+}
+
+
 int hoare_partition(int *a, int l, int r) {
     int x = a[(l + r)/2];
     int i = l - 1;
@@ -116,8 +141,7 @@ int hoare_partition(int *a, int l, int r) {
         
         if (i < j) {
             swap(a[i], a[j]);
-        }
-        else return j;
+        }        else return j;
     }
 }
 
@@ -144,10 +168,42 @@ void quick_sort(int *a, int l, int r) {
     }
 }
 
+int binary_search(int *a, int key, int l, int r) {
+    while (l <= r) {
+        int mid = l + (r - l) / 2;
+        
+        if (a[mid] == key) {
+            return mid;
+        } else if (a[mid] < key) {
+            l = mid + 1;
+        } else {
+            r = mid - 1;
+        }
+    }
+    
+    return l;
+}
+
+void binary_insertion_sort(int *a, int n) {
+    for (int i = 1; i < n; ++i) {
+        int key = a[i]; 
+        
+        int pos = binary_search(a, key, 0, i - 1);
+
+        int j = i - 1;
+        while (j >= pos) {
+            a[j + 1] = a[j];
+            j--;
+        }
+        
+        a[pos] = key;
+    }
+}
+
 int main() {
     int a[7] = {1, 4, 2, 3, 0, 1, 9};
 
-    quick_sort(a, 0, 6);
+    bottom_up_merge_sort(a, 6);
 
     for (auto x : a) {
         cout << x << " ";

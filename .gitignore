@@ -48,3 +48,5 @@ lab3/lab3_pdf/*
 
 # debug information files
 *.dwo
+
+test

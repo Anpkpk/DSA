@@ -1,0 +1,640 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage{config}
+
+\begin{document}
+
+\begin{center}
+    {\LARGE \textbf{Lab 4: Sorting Algorithms}}
+\end{center}
+\vspace{0.5cm}
+
+\section{Lý thuyết về thuật toán sắp xếp}
+\textbf{Bài toán sắp xếp (Sorting Problem):}
+\begin{itemize}
+    \item \textbf{Input:} Dãy n phần tử $\langle a_1, a_2,\dots, a_n \rangle$
+    \item \textbf{Output:} Một hoán vị $\langle a_1', a_2',\dots, a_n'\rangle$ của dãy đầu vào 
+                           sao cho $\langle a_1' \le a_2'\le \dots \le a_n' \rangle$
+\end{itemize}
+\textbf{Phân loại thuật toán sắp xếp:}
+\begin{itemize}
+  \item \textbf{Comparison-based sorting}: Dựa trên phép so sánh giữa các phần tử.
+  \begin{itemize}
+    \item \textbf{Cận dưới lý thuyết}: $\Omega(n \log n)$
+    \item \textbf{Ví dụ}: Bubble Sort, Selection Sort, Insertion Sort, Merge Sort, Quick Sort, Heap Sort
+  \end{itemize}
+
+  \item \textbf{Non-comparison sorting}: Không dựa trên phép so sánh.
+  \begin{itemize}
+    \item Có thể đạt độ phức tạp tuyến tính $O(n)$ trong các điều kiện đặc biệt.
+    \item \textbf{Ví dụ}: Counting Sort, Radix Sort, Bucket Sort
+  \end{itemize}
+
+  \item \textbf{In-place sorting}: Sử dụng bộ nhớ phụ $O(1)$ hoặc $O(\log n)$.
+  \item \textbf{Stable sorting}: Giữ nguyên thứ tự tương đối của các phần tử bằng nhau.
+\end{itemize}
+
+\subsection{}
+\begin{table}[H]
+\centering
+\caption{}
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\textbf{Algorithm} & \textbf{Best Case} & \textbf{Average Case} & \textbf{Worst Case} & \textbf{Stable} & \textbf{In-place} \\ 
+\hline
+Bubble Sort       & $O(n)$            & $O(n^2)$             & $O(n^2)$            & Có             & Có  \\ 
+\hline
+Selection Sort    & $O(n^2)$          & $O(n^2)$             & $O(n^2)$            & Không          & Có  \\ 
+\hline
+Insertion Sort    & $O(n)$            & $O(n^2)$             & $O(n^2)$            & Có             & Có  \\ 
+\hline
+Merge Sort        & $O(n \log n)$     & $O(n \log n)$        & $O(n \log n)$       & Có             & Không \\ 
+\hline
+Quick Sort        & $O(n \log n)$     & $O(n \log n)$        & $O(n^2)$            & Không          & Có  \\ 
+\hline
+\end{tabular}
+\end{table}
+
+\section{Các thuật toán sắp xếp cơ bản}
+\subsection{Bubble Sort}
+\textbf{Ý tưởng:} So sánh và hoán đổi các cặp phần tử liên tiếp, 
+                  đưa phần tử lớn nhất "nổi" lên cuối mảng sau mỗi lượt.\\
+\textbf{Yêu cầu:}
+\begin{enumerate}
+    \item[a.] Viết \textit{pseudocode} cho thuật toán Bubble Sort.
+    \item[b.] Cài đặt thuật toán Bubble Sort trong C++.
+    \item[c.] Tối ưu hóa thuật toán bằng cách dừng sớm khi mảng đã được sắp xếp.
+    \item[d.] So sánh số phép so sánh và số phép hoán đổi giữa phiên bản cơ bản 
+              và phiên bản tối ưu với các bộ test khác nhau.
+\end{enumerate}
+\textit{Test cases gợi ý: Mảng đã sắp xếp xuôi/ngược, mảng ngẫu nhiên, mảng có phần tử trùng,...}
+
+\begin{center}
+    \textbf{Bài làm}
+\end{center}
+
+\begin{enumerate}
+    \item[a.] Viết \textit{pseudocode} cho thuật toán Bubble Sort.
+    \begin{codebox}
+        \Procname{$\proc{Bubble-Sort}(A)$}
+            \li $n = A.\id{lenght}$
+            \li \For $i = 0$ \To $n - 1$
+                \Do
+                    \li \For $j = 0$ \To $n - i - 1$
+                        \Do
+                            \li \If $A[j] > A[j + 1]$
+                            \Then
+                                \li $\proc{swap}(A[j], A[j + 1])$
+                                \li $swapped \gets \const{true}$
+                            \End
+                        \End
+                \End
+    \end{codebox}
+
+    \item[b.] Cài đặt thuật toán Bubble Sort trong C++.
+    \begin{minted}[fontsize=\small, bgcolor=codebg, frame=single,
+               framesep=0pt, breaklines]{cpp}
+        void bubble_sort(int *a, int n) {
+            for (int i = 0; i < n - 1; i++) {
+                swapped = false;
+                for (int j = 0; j < n - i - 1; j++) {
+                    if (a[j] > a[j + 1]) {
+                        swap(a[j], a[j + 1]);
+                        swapped = true;
+                    }
+                }
+            }
+        }
+    \end{minted}
+
+    \begin{verbatim}
+    array: 37 23 0 17 12 72 31 46 100 88 54
+    sorted: 0 12 17 23 31 37 46 54 72 88 100
+    \end{verbatim}
+
+    \item[c.] Tối ưu hóa thuật toán bằng cách dừng sớm khi mảng đã được sắp xếp.
+    \begin{codebox}
+        \Procname{$\proc{Bubble-Sort-Optim}(A)$}
+            \li $n = A.\id{length}$
+            \li \For $i = 0$ \To $n - 1$
+                \Do
+                    \li $swapped \gets \const{false}$
+                    \li \For $j = 0$ \To $n - i - 1$
+                        \Do
+                            \li \If $A[j] > A[j + 1]$
+                            \Then
+                                \li $\proc{swap}(A[j], A[j + 1])$
+                                \li $swapped \gets \const{true}$
+                            \End
+                        \End
+                    \li \If $\lnot swapped$
+                        \Then
+                            \li \Return
+                        \End
+                \End
+    \end{codebox}
+    \item[d.] So sánh số phép so sánh và số phép hoán đổi giữa phiên bản cơ bản 
+              và phiên bản tối ưu với các bộ test khác nhau.
+    \begin{enumerate}
+        \item[-] Như bên trên. 
+    \end{enumerate}
+\end{enumerate}
+
+
+
+\subsection{Selection Sort}
+\textbf{Ý tưởng: }Tìm và đưa phần tử nhỏ nhất trong phần chưa sắp xếp và đặt nó vào 
+vị trí đầu của phần chưa sắp xếp đó.
+
+\textbf{Yêu cầu:}
+\begin{enumerate}
+    \item[a.] Viết pseudocode cho thuật toán Selection Sort.
+    \item[b.] Cài đặt thuật toán Selection Sort trong C++.
+    \item[c.] Giải thích tại sao Best case và Worst case có cùng độ phức tạp.
+    \item[d.] Chứng minh rằng Selection Sort thực hiện đúng $n - 1$ lần hoán đổi (là số lần hoán đổi tối thiểu).
+\end{enumerate}
+
+\begin{center}
+    \textbf{Bài làm}
+\end{center}
+
+\begin{enumerate}
+    \item[a.] Viết \textit{pseudocode} cho thuật toán Selection Sort.
+    \begin{codebox}
+        \Procname{$\proc{Selection-Sort}(A)$}
+            \li $n = A.\id{length}$
+            \li \For $i = 0$ \To $n - 1$
+                \Do
+                    \li $min\_index = i$
+                    \li \For $j = i + 1$ \To $n - 1$
+                        \Do
+                            \li \If $A[j] < A[min\_index]$
+                            \Then
+                                \li $min\_index = j$
+                            \End
+                        \End
+                    \li $\proc{swap(A[i], A[min\_index])}$
+                \End
+    \end{codebox}
+
+    \item[b.] Cài đặt thuật toán Selection Sort trong C++.
+    \begin{minted}[fontsize=\small, bgcolor=codebg, frame=single,
+               framesep=0pt, breaklines]{cpp}
+        void selection_sort(int *a, int n) {
+            for (int i = 0; i < n - 1; i++) {
+                int min_idx = i;
+                for (int j = i + 1; j < n; j++) {
+                    if (a[j] < a[min_idx]) {
+                        min_idx = j; 
+                    }
+                }
+                swap(a[i], a[min_idx]);
+            }
+        }
+    \end{minted}
+
+    \begin{verbatim}
+    array: 37 23 0 17 12 72 31 46 100 88 54
+    sorted: 0 12 17 23 31 37 46 54 72 88 100
+    \end{verbatim}
+
+    \item[c.] Giải thích tại sao Best case và Worst case có cùng độ phức tạp.
+    \newline
+    Trong thuật toán Selection Sort, tại mỗi vòng lặp, ta phải tìm phần tử nhỏ nhất 
+    trong phần chưa sắp xếp bằng cách duyệt qua toàn bộ các phần tử còn lại.
+    Việc này được thực hiện độc lập với việc mảng ban đầu có được sắp xếp hay không.
+    Do đó, số lần so sánh luôn là:
+    \[
+        \frac{n(n-1)}{2}
+    \]
+    ở cả trường hợp tốt nhất và xấu nhất.
+
+    Vì vậy:
+    \[
+        T_{best}(n) = T_{worst}(n) = O(n^2)
+    \]
+
+    \item[d.] Chứng minh rằng Selection Sort thực hiện đúng $n-1$ lần hoán đổi
+    \newline
+    Ở mỗi vòng lặp $i$ (từ $1$ đến $n-1$), thuật toán tìm được vị trí phần tử 
+    nhỏ nhất trong phần còn lại và nếu vị trí đó khác $i$, thì hoán đổi hai phần tử.
+    Như vậy, mỗi vòng lặp ngoài thực hiện tối đa một lần hoán đổi.
+
+    Vì có $(n-1)$ vòng lặp ngoài, nên số lần hoán đổi tối đa là $(n-1)$.
+    Trên thực tế, thuật toán luôn thực hiện đúng $(n-1)$ lần hoán đổi, vì ở vòng cuối cùng, 
+    phần tử còn lại đã nằm đúng vị trí.
+\end{enumerate}
+
+\subsection{Insertion Sort}
+\textbf{Ý tưởng: }Tìm và đưa phần tử nhỏ nhất trong phần chưa sắp xếp và đặt nó vào vị trí
+đầu của phần chưa sắp xếp đó.
+\textbf{Yêu cầu:}
+
+\begin{enumerate}
+    \item[a.] Viết pseudocode cho thuật toán Insertion Sort.
+    \item[b.] Cài đặt thuật toán Insertion Sort trong C++.
+    \item[c.] Cài đặt phiên bản Binary Insertion Sort 
+              (sử dụng binary search để tìm vị trí chèn).
+              Phân tích độ phức tạp và so sánh với phiên bản thường.
+    \item[d.] Giải thích tại sao Insertion Sort hiệu quả với Mảng nhỏ 
+              (n < 50) và mảng gần như đã sắp xếp.
+\end{enumerate}
+
+\begin{center}
+    \textbf{Bài làm}
+\end{center}
+
+\begin{enumerate}
+    \item[a.] Viết pseudocode cho thuật toán Insertion Sort.
+    \begin{codebox}
+        \Procname{$\proc{Insertion-Sort}(A)$}
+            \li $n = A.\id{length}$
+            \li \For $i = 1$ \To $n - 1$
+                \Do
+                    \li $key = A[i]$
+                    \li $j = i - 1$
+                    \li \While $(j \ge 0) \And (A[j] > key)$
+                        \Do
+                            \li $A[j + 1] = a[j]$
+                            \li $j = j - 1$
+                        \End
+                    \li $A[j + 1] = key$
+                \End
+    \end{codebox}
+    \item[b.] Cài đặt thuật toán Insertion Sort trong C++.
+    \begin{minted}[fontsize=\small, bgcolor=codebg, frame=single,
+               framesep=0pt, breaklines]{cpp}
+        void insertion_sort(int *a, int n) {
+            for (int i = 1; i < n; i++) {
+                int key = a[i];
+                int j = i - 1;
+                while (j >= 0 && a[j] > key) {
+                    a[j + 1] = a[j];
+                    j = j - 1;
+                }
+                a[j + 1] = key;
+            }
+        }
+    \end{minted}
+
+    \begin{verbatim}
+    array: 37 23 0 17 12 72 31 46 100 88 54
+    sorted: 0 12 17 23 31 37 46 54 72 88 100
+    \end{verbatim}
+
+    \newpage
+    \item[c.] Cài đặt phiên bản Binary Insertion Sort 
+              (sử dụng binary search để tìm vị trí chèn).
+              Phân tích độ phức tạp và so sánh với phiên bản thường.
+    \begin{minted}[fontsize=\small, bgcolor=codebg, frame=single,
+               framesep=0pt, breaklines]{cpp}
+        int binary_search(int *a, int key, int l, int r) {
+            while (l <= r) {
+                int mid = l + (r - l) / 2;
+                if (a[mid] == key) {
+                    return mid;
+                } else if (a[mid] < key) {
+                    l = mid + 1;
+                } else {
+                    r = mid - 1;
+                }
+            }
+            return l;
+        }
+
+        void binary_insertion_sort(int *a, int n) {
+            for (int i = 1; i < n; ++i) {
+                int key = a[i]; 
+                int pos = binary_search(a, key, 0, i - 1);
+                int j = i - 1;
+                while (j >= pos) {
+                    a[j + 1] = a[j];
+                    j--;
+                }
+                a[pos] = key;
+            }
+        }
+    \end{minted}
+
+    \begin{verbatim}
+    array: 37 23 0 17 12 72 31 46 100 88 54
+    sorted: 0 12 17 23 31 37 46 54 72 88 100
+    \end{verbatim}
+
+    \item[d.] Giải thích tại sao Insertion Sort hiệu quả với Mảng nhỏ 
+              (n < 50) và mảng gần như đã sắp xếp.
+    \begin{itemize}
+        \item \textbf{Với mảng nhỏ ($n < 50$):}
+        \begin{itemize}
+            \item \textbf{Overhead (Chi phí) thấp:} Thuật toán cực kỳ đơn giản 
+            (vài vòng lặp, không đệ quy, không cần bộ nhớ phụ $O(1)$).
+            \item Các thuật toán $O(n \log n)$ (như QuickSort) cồng kềnh hơn, 
+            tốn chi phí cho việc gọi hàm, quản lý đệ quy.
+            \item Khi $n$ nhỏ, $n^2$ vẫn là một con số nhỏ, 
+            và sự đơn giản của Insertion Sort chạy nhanh hơn sự cồng kềnh 
+            của các thuật toán phức tạp.
+        \end{itemize}
+        
+        \item \textbf{Với mảng gần như đã sắp xếp:}
+        \begin{itemize}
+            \item \textbf{Tính thích ứng (Best Case $O(n)$):} Khi một phần tử đã đúng vị trí 
+            (xảy ra thường xuyên), Insertion Sort chỉ mất \textbf{1 phép so sánh} (tức $O(1)$).
+            \item Nó không tốn thời gian di dời cho những phần tử đã đúng chỗ.
+            \item Kết quả là tổng thời gian chạy tiến rất gần về $O(n)$, 
+            nhanh hơn cả các thuật toán $O(n \log n)$.
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}
+
+\section{Các thuật toán sắp xếp hiệu quả}
+\subsection{Merge Sort}
+
+\textbf{Ý tưởng}: Sử dụng kỹ thuật chia để trị (Divide and Conquer):
+\begin{itemize}
+    \item \textbf{Chia (Divide):} Chia mảng thành 2 nửa.
+    \item \textbf{Trị (Conquer):} Sắp xếp đệ quy từng nửa.
+    \item \textbf{Hợp nhất (Combine):} Trộn 2 mảng con đã sắp xếp.
+\end{itemize}
+
+\textbf{Yêu cầu}:
+\begin{enumerate}
+    \item[a.] Viết pseudocode cho thuật toán Merge Sort và hàm Merge.
+    \item[b.] Thiết lập công thức truy hồi và sử dụng Master Theorem để phân tích độ phức tạp thời gian.
+    \item[c.] Cài đặt Merge Sort trong C++ với cả hai cách:
+        \begin{itemize}
+            \item Top-down (đệ quy)
+            \item Bottom-up (lặp)
+        \end{itemize}
+    \item[d.] Chứng minh Merge Sort là thuật toán ổn định (stable).
+    \item[e.] \textit{Phân tích tại sao Merge Sort cần $O(n)$ bộ nhớ phụ?}
+\end{enumerate}
+
+\begin{center}
+    \textbf{Bài làm}
+\end{center}
+
+\begin{enumerate}
+    \item[a.] Viết pseudocode cho thuật toán Merge Sort và hàm Merge.
+    \begin{codebox}
+    \Procname{$\proc{Merge}(A, p, q, r)$}
+    \li $n_1 = q - p + 1$
+    \li $n_2 = r - q$
+    \li let $L[1..n_1 + 1]$ and $R[1..n_2 + 1]$ be new arrays
+    \li \For $i = 1$ \To $n_1$
+        \Do
+            \li $L[i] = A[p + i - 1]$
+        \End
+    \li \For $j = 1$ \To $n_2$
+        \Do
+            \li $R[j] = A[q + j]$
+        \End
+    \li $L[n_1 + 1] = \infty$
+    \li $R[n_2 + 1] = \infty$
+    \li $i = 1$
+    \li $j = 1$
+    \li \For $k = p$ \To $r$
+        \Do
+        \li \If $L[i] \le R[j]$
+            \Then
+                \li $A[k] = L[i]$
+                \li $i = i + 1$
+        \li \Else $A[k] = R[j]$
+                \li $j = j + 1$
+            \End
+        \End
+    \end{codebox}
+
+    \begin{codebox}
+    \Procname{$\proc{Merge-Sort}(A, p, r)$}
+        \li \If $p < r$
+            \Then
+                \li $q = \lfloor (p + r)/2 \rfloor $
+                \li $\proc{Merge-Sort}(A, p, q)$
+                \li $\proc{Merge-Sort}(A, p + 1, r)$
+                \li $\proc{Merge}(A, p, q, r)$
+            \End
+    \end{codebox}
+
+    \item[b.] Thiết lập công thức truy hồi và sử dụng Master Theorem để phân tích độ phức tạp thời gian.
+    \begin{align*}
+        &T(n) = 2T(\frac{n}{2}) + O(n) \\
+        &a = 2, \quad b = 2, \quad f(n) = n \\ 
+        &n^{\log_b a} = n = f(n)   \\
+        \Rightarrow &T(n) = \Theta(n \log(n))
+    \end{align*}
+
+    \newpage
+    \item[c.] Cài đặt Merge Sort trong C++ với cả hai cách:
+    \begin{itemize}
+    \item Top-down (đệ quy)
+    \begin{minted}[fontsize=\small, bgcolor=codebg, frame=single,
+                        framesep=0pt, breaklines]{cpp}
+    void merge(int *L, int l_size, int *R, int r_size, int *a) {
+        int i = 0, l = 0, r = 0;
+        while (l < l_size && r < r_size) {
+            if (L[l] <  R[r]){
+                a[i] = L[l];
+                i++; l++;
+            }
+            else {
+                a[i] = R[r];
+                r++; i++;
+            }
+        } 
+        while (l < l_size) {
+            a[i] = L[l];
+            i++; l++;
+        }
+        while (r < r_size) {
+            a[i] = R[r];
+            i++; r++;
+        }
+    }
+    void merge_sort(int *a, int n) {
+        if (n <= 1) return;
+        int middle = n/2;
+        int i = 0, j = 0;
+        int L[middle], R[n - middle];
+        for (i = 0; i < n; i++) {
+            if (i < middle){
+                L[i] = a[i];
+            }
+            else {
+                R[j] = a[i];
+                j++;
+            }
+        }
+        merge_sort(L, middle);
+        merge_sort(R, n - middle);
+        merge(L, middle, R, n - middle, a);
+    }
+    \end{minted}
+
+    \begin{verbatim}
+    array: 37 23 0 17 12 72 31 46 100 88 54
+    sorted: 0 12 17 23 31 37 46 54 72 88 100
+    \end{verbatim}
+
+    \item Bottom-up (lặp)
+    \begin{minted}[fontsize=\small, bgcolor=codebg, frame=single,
+                        framesep=0pt, breaklines]{cpp}
+    void bottom_up_merge_sort(int *a, int n) {
+        int *temp = new int[n];
+        
+        for (int sz = 1; sz < n; sz *= 2) {
+            for (int left = 0; left + sz < n; left += 2 * sz) {
+                int mid = left + sz - 1;
+                int right = min(left + 2*sz - 1, n - 1);
+                
+                int i = left, j = mid + 1, k = left;
+                while (i <= mid && j <= right) {
+                    temp[k++] = (a[i] <= a[j]) ? a[i++] : a[j++];
+                }
+                while (i <= mid) temp[k++] = a[i++];
+                while (j <= right) temp[k++] = a[j++];
+                
+                for (int p = left; p <= right; ++p)
+                    a[p] = temp[p];
+            }
+        }
+        delete temp;
+    }
+    \end{minted}
+
+    \begin{verbatim}
+    array: 37 23 0 17 12 72 31 46 100 88 54
+    sorted: 0 12 17 23 31 37 46 54 72 88 100
+    \end{verbatim}
+
+    \end{itemize}
+
+    \item[d.] Chứng minh Merge Sort là thuật toán ổn định (stable). \\
+    Merge Sort \textbf{ổn định} vì hàm \texttt{Merge} được thiết kế có ưu tiên. 
+    Khi trộn hai mảng con $L$ (trái) và $R$ (phải), nếu gặp hai phần tử bằng nhau 
+    ($L[i] = R[j]$), thuật toán \textbf{luôn chọn phần tử từ mảng $L$ (bên trái) trước}. 
+    Điều này đảm bảo thứ tự tương đối ban đầu của các phần tử bằng nhau được bảo toàn. 
+    
+    \item[e.] \textit{Phân tích tại sao Merge Sort cần $O(n)$ bộ nhớ phụ?} \\
+    Nó cần \textbf{$O(n)$} bộ nhớ phụ để chứa các \textbf{mảng tạm ($L$ và $R$)} 
+    trong quá trình \texttt{Merge}.
+\end{enumerate}
+
+\subsection{Quick Sort}
+\textbf{Ý tưởng}: Sử dụng kỹ thuật chia để trị với phương pháp partition::
+\begin{itemize}
+    \item \textbf{Chọn pivot:} Chọn một phần tử làm pivot
+    \item \textbf{Partition:} Chia mảng thành 2 phần: nhỏ hơn pivot và lớn hơn pivot
+    \item \textbf{Đệ quy:} Sắp xếp đệ quy hai phần
+\end{itemize}
+
+\textbf{Yêu cầu}:
+\begin{enumerate}
+    \item[a.] Viết pseudocode cho thuật toán Quick Sort và hàm Partition.
+    \item[b.] Cài đặt Quick Sort với các phương pháp chọn pivot khác nhau 
+              (đầu mảng, cuối mảng, ngẫu nhiên).
+    \item[c.] So sánh hiệu quả của từng phương pháp chọn pivot với:
+        \begin{itemize}
+            \item Mảng ngẫu nhiên
+            \item Mảng đã sắp xếp
+            \item Mảng có nhiều phần tử trùng
+        \end{itemize}
+\end{enumerate}
+
+\begin{center}
+    \textbf{Bài làm}
+\end{center}
+
+\begin{enumerate}
+    \item[a.] Viết pseudocode cho thuật toán Quick Sort và hàm Partition.
+    \begin{codebox}
+    \Procname{$\proc{Partition}(A, l, r)$}
+    \li $x \gets A[\lfloor (l+r)/2 \rfloor]$ 
+    \li $i \gets l - 1$
+    \li $j \gets r + 1$
+    \li \While $1$
+        \Do
+            \li \Repeat
+                \li $j \gets j - 1$
+            \li \Until $A[j] \le x$
+            \li \Repeat
+                \li $i \gets i + 1$
+            \li \Until $A[i] \ge x$
+            \li \If $i < j$
+            \Then
+                \li $\proc{swap}(A[i], A[j])$
+            \li \Else
+                \li \Return $j$
+            \End
+       \End
+    \end{codebox}
+
+    \begin{codebox}
+    \Procname{$\proc{Quicksort}(A, l, r)$}
+    \li \If $l < r$
+        \Then
+            \li $q \gets \proc{Partition}(A, l, r)$
+            \li $\proc{Quicksort}(A, l, q)$
+            \li $\proc{Quicksort}(A, q + 1, r)$
+        \End
+    \end{codebox}
+
+    \item[b.] Cài đặt Quick Sort với các phương pháp chọn pivot khác nhau 
+              (đầu mảng, cuối mảng, ngẫu nhiên).
+    \begin{minted}[fontsize=\small, bgcolor=codebg, frame=single,
+                        framesep=0pt, breaklines]{cpp}
+    int hoare_partition(int *a, int l, int r) {
+        int x = a[(l + r)/2];
+        int i = l - 1;
+        int j = r + 1;
+        
+        while (1) {
+            do  j--;
+            while (a[j] > x);
+            do i++;
+            while (a[i] < x);
+
+            if (i < j) {
+                swap(a[i], a[j]);
+            } else return j;
+        }
+    }
+    int lomuto_partition(int *a, int l, int r) {
+        int pivot = a[r];
+        int i = l - 1;
+        for (int j = l; j < r; j++) {
+            if (a[j] < pivot) {
+                i++;
+                swap(a[i], a[j]);
+            }
+        }
+        swap(a[i + 1], a[r]);
+        return i + 1;
+    }
+    void quick_sort(int *a, int l, int r) {
+        if (l < r) {
+            int q = hoare_partition(a, l, r);
+            quick_sort(a, l, q); 
+            quick_sort(a, q + 1, r);
+
+            // int q = lomuto_partition(a, l, r);
+            // quick_sort(a, l, q - 1);
+            // quick_sort(a, q + 1, r);
+        }
+    }
+    \end{minted}
+
+    \begin{verbatim}
+    array: 64, -10, 8, 15, 27, 8, 5, -2, 99, 31
+    sorted: -10, -2, 5, 8, 8, 15, 27, 31, 64, 99
+    \end{verbatim}
+
+    \item[c.] So sánh hiệu quả của từng phương pháp chọn pivot với:
+        \begin{itemize}
+            \item Mảng ngẫu nhiên
+            \item Mảng đã sắp xếp
+            \item Mảng có nhiều phần tử trùng
+        \end{itemize}
+\end{enumerate}
+
+
+
+\end{document}

@@ -134,14 +134,13 @@ int hoare_partition(int *a, int l, int r) {
             j--;
         } while (a[j] > x);
         
-        do
-        {
+        do {
             i++;
         } while (a[i] < x);
         
         if (i < j) {
             swap(a[i], a[j]);
-        }        else return j;
+        } else return j;
     }
 }
 

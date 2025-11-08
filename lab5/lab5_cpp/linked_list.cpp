@@ -203,7 +203,7 @@ public:
         Node *slow = head;
         Node *fast = head;
 
-        while (fast != nullptr and fast->next != nullptr) {
+        while (fast->next != nullptr && fast->next->next != nullptr) {
             slow = slow->next;
             fast = fast->next->next;
         }
@@ -238,7 +238,7 @@ public:
     }
 
     void swapNodes(int x, int y) {
-        
+
     }
 
     void display() {

@@ -238,7 +238,63 @@ public:
     }
 
     void swapNodes(int x, int y) {
+       if (x == y) return;
 
+        Node *prev_x = nullptr;
+        Node *node_x = head;
+        while (node_x != nullptr) {
+            if (node_x->data != x) {
+                prev_x = node_x;
+            }
+            node_x = node_x->next;
+        }
+
+        Node *prev_y = nullptr;
+        Node *node_y = head;
+        while (node_y != nullptr) {
+            if (node_y->data != x) {
+                prev_y = node_x;
+            }
+            node_x = node_x->next;
+        }
+
+        if (node_x == nullptr or node_y == nullptr)
+            return;
+
+        if (prev_x != nullptr)
+            prev_x->next = node_y;
+        else
+            head = node_y;
+
+        if (prev_y != nullptr)
+            prev_y->next = node_x;
+        else
+            head = node_x;
+
+        Node *temp = node_x->next;
+        node_x->next = node_y->next;
+        node_y->next = temp;
+    }
+    
+    void removeNthFromEnd(int n) {
+        Node *slow = head;
+        Node *fast = head;
+
+        if (slow->next == nullptr) 
+            return;
+
+        for (int i = 0; i < n; i++) {
+            fast = fast->next;
+        }
+
+        if(fast == nullptr) return;
+
+        while (fast->next != nullptr) {
+            fast = fast->next;
+            slow = slow->next;
+        }
+
+        slow->next = slow->next->next;
     }
 
     void display() {
@@ -257,14 +313,13 @@ int main() {
 
     lk.insertTail(3);
     lk.insertTail(6);
-    lk.insertTail(3);
-    lk.insertTail(6);
-    lk.insertTail(3);
+    lk.insertTail(1);
+    lk.insertTail(8);
+    lk.insertTail(5);
 
     lk.display();
 
-    if (lk.isPalindrome())
-        cout << "True";
-    else 
-        cout << "False";
+    lk.removeNthFromEnd(2);
+    
+    lk.display();
 }

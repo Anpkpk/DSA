@@ -63,12 +63,10 @@ public:
 
     Node *search(int value) {
         Node *tmp = head;
-        while (tmp != nullptr) {
-            if (tmp->data == value)
-                return tmp;
+        while (tmp != nullptr and tmp->data != value) {
             tmp = tmp->next;
         }
-        return nullptr;
+        return tmp;
     }
 
     int count(int value) {

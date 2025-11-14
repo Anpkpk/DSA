@@ -48,7 +48,6 @@ public:
         return length == 0;
     }
 
-
     int size() {
         return length;
     }

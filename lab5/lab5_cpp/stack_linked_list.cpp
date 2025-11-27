@@ -21,7 +21,6 @@ public:
         }
     }
 
-
     void push(int value) {
         Node* new_node = new Node(value);
         new_node->next = top; 
@@ -61,6 +60,7 @@ public:
             cnt++;
             tmp = tmp->next;
         }
+        return cnt;
     }
 };
 

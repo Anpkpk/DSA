@@ -28,7 +28,7 @@
 *.mod
 *.smod
 
-# Ignore lab2_pdf
+# Ignore lab_pdf
 lab2/lab2_pdf/*
 !lab2/lab2_pdf/*.pdf
 
@@ -38,6 +38,7 @@ lab3/lab3_pdf/*
 lab4/lab4_pdf/*
 !lab4/lab4_pdf/*.pdf
 
+ontap
 
 # Compiled Static libraries
 *.lai

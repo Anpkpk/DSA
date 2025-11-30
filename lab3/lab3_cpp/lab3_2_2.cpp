@@ -1,41 +1,36 @@
-#include<bits/stdc++.h>
+#include <bits/stdc++.h>
 
 using namespace std;
 
-pair<int, int> find_pair(int *a, int s, int l, int r) {
-    if (l >= r) return {-1, -1};
-    int m = (l + r) / 2;
-    
-    auto result = find_pair(a, s, l, m);
-    if (result.first != -1) {
-        return result;
-    }
+int ans[2];
 
-    result = find_pair(a, s, m + 1, r);
-    if (result.first != -1) {
-        return result;
-    }
+void sum_of_2(int *a, int S, int l, int r) {
+    if (l >= r) return;
 
-    int i = m;
-    int j = m + 1;
-    while (i >= l and j <= r) {
+    int m = (l + r)/2;
+    sum_of_2(a, S, l, m);
+    sum_of_2(a, S, m + 1, r);
+
+    int i = l;
+    int j = r;
+    while (i <= m and j > m) {
         int sum = a[i] + a[j];
-        if (sum == s) {
-            return {i, j};
+        if (sum == S) {
+            ans[0] = a[i];
+            ans[1] = a[j];
+            return;
         }
-        else if (sum > s) {
-            i -= 1;
-        }
-        else {
-            j += 1;
-        }
+        else if (sum > S)
+            j--;
+        else 
+            i++;
     }
-    return {-1, -1};
 }
 
 int main() {
-    int a[6] = {1, 4, 3, 2, 5, 2};
+    int S;
+    int a[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
-    auto res = find_pair(a, 8, 0, 5);
-    cout << res.first << " " << res.second << endl;
+    sum_of_2(a, 13, 0, 9);
+    cout << ans[0] << " " << ans[1];
 }

@@ -153,6 +153,47 @@ public:
     }
 };
 
+Node *reverse(Node *node) {
+    if (node == nullptr) return nullptr;
+
+    Node *temp = node->left;
+    node->left = node->right;
+    node->right = temp;
+
+    reverse(node->left);
+    reverse(node->right);
+
+    return node;
+}
+
+bool isEqual(Node *root1, Node *root2) {
+    if (!root1 and !root2) return true;
+
+    if (!root1 or !root2) return false;
+
+    if (root1->data != root2->data) return false;
+    
+    return isEqual(root1->left, root2->left) and 
+           isEqual(root1->right, root2->right);
+}
+
+Node *combine(Node *root1, Node *root2) {
+    if (!root1 and !root2) return nullptr;
+
+    if (!root1 or !root2) {
+        if (!root1) 
+            root1 = root2; 
+        return root1;
+    }
+
+    root1->data += root2->data;
+    
+    root1->left = combine(root1->left, root2->left);
+    root1->right = combine(root1->right, root2->right);
+
+    return root1;
+}
+
 int main() {
     BinaryTree t;
     Node *r = t.createNode(1);
@@ -160,8 +201,15 @@ int main() {
 
     t.insertLeft(r, 2);
     t.insertRight(r, 3);
+    
     t.insertLeft(r->left, 4);
     t.insertRight(r->left, 5);
 
+    t.insertLeft(r->right, 6);
+    t.insertRight(r->right, 7);
+
+    t.printTree(r);
+
+    reverse(r);
     t.printTree(r);
 }

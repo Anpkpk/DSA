@@ -105,7 +105,7 @@ void bottom_up_merge_sort(int *a, int n) {
     for (int sz = 1; sz < n; sz *= 2) {
         for (int left = 0; left + sz < n; left += 2 * sz) {
             int mid = left + sz - 1;
-            int right = std::min(left + 2*sz - 1, n - 1);
+            int right = min(left + 2*sz - 1, n - 1);
             
             // merge into temp
             int i = left, j = mid + 1, k = left;

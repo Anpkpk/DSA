@@ -13,7 +13,12 @@ private:
     Node *head; // pointer to the head of the list
 public:
     LinkedList() : head(nullptr) {}
-    ~LinkedList() {}
+    ~LinkedList() {
+        while (head)
+        {
+            removeHead();
+        }
+    }
     
     void insertHead(int value) {
         Node *new_node = new Node(value);

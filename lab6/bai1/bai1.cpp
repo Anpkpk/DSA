@@ -110,13 +110,18 @@ public:
         cout << arr[index] << " ";
         inorder(2 * index + 2);
     }
+
+    void level_order() {
+        for (int i = 0; i < size; i++) {
+            cout << arr[i] << " ";
+        }
+    }
 };
 
 int main() {
 
     ArrayBinaryTree tree(31); 
 
-    // Xây dựng cây theo ví dụ của bạn:
     //       1
     //      / \
     //     2   3

@@ -9,6 +9,17 @@ from bitarray import bitarray
 
 csv.field_size_limit(10 * 1024 * 1024)  # 10MB / field
 
+BG_MAIN   = "#f5f7fa"   
+BG_LEFT   = "#eef1f6"   
+BG_RIGHT  = "#ffffff"  
+BTN_COLOR = "#4f46e5" 
+BTN_HOVER = "#4338ca"
+TEXT_MAIN = "#111827"
+TEXT_SUB  = "#374151"
+BORDER    = "#d1d5db"
+SUCCESS   = "#16a34a"
+ERROR     = "#dc2626"
+
 
 # ================= BLOOM FILTER =================
 
@@ -209,95 +220,122 @@ def update_stats():
 
 root = tk.Tk()
 root.title("Bloom Filter Spam Detection Demo")
-root.geometry("900x550")
-root.configure(bg="#f2f2f2")
+root.geometry("1000x600")
+root.configure(bg=BG_MAIN)
 
-# ===== MAIN LAYOUT =====
-main_frame = tk.Frame(root, bg="#f2f2f2")
-main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+main_frame = tk.Frame(root, bg=BG_MAIN)
+main_frame.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
 
-left_frame = tk.Frame(main_frame, width=250, bg="#e6e6e6")
-left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=5)
+left_frame = tk.Frame(
+    main_frame, width=260,
+    bg=BG_LEFT, highlightbackground=BORDER, highlightthickness=1
+)
+left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 10))
 
-right_frame = tk.Frame(main_frame, bg="white")
-right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5)
+right_frame = tk.Frame(
+    main_frame, bg=BG_RIGHT,
+    highlightbackground=BORDER, highlightthickness=1
+)
+right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+
+
+def styled_button(parent, text, command):
+    btn = tk.Button(
+        parent, text=text,
+        command=command,
+        bg=BTN_COLOR, fg="white",
+        font=("Segoe UI", 10, "bold"),
+        activebackground=BTN_HOVER,
+        activeforeground="white",
+        relief=tk.FLAT,
+        padx=10, pady=6,
+        cursor="hand2"
+    )
+    btn.bind("<Enter>", lambda e: btn.config(bg=BTN_HOVER))
+    btn.bind("<Leave>", lambda e: btn.config(bg=BTN_COLOR))
+    return btn
 
 # ===== LEFT PANEL =====
 tk.Label(
-    left_frame, text="Controls",
-    font=("Arial", 14, "bold"),
-    bg="#e6e6e6"
-).pack(pady=10)
+    left_frame, text="⚙ Controls",
+    font=("Segoe UI", 14, "bold"),
+    bg=BG_LEFT, fg=TEXT_MAIN
+).pack(pady=(12, 16))
 
-tk.Button(
-    left_frame, text="📂 Open Email (.txt)",
-    command=open_file,
-    width=20
-).pack(pady=5)
+styled_button(left_frame, "📂 Open Email (.txt)", open_file).pack(pady=6, fill=tk.X, padx=12)
+styled_button(left_frame, "📊 Evaluate CSV (Enron)", open_csv_and_evaluate).pack(pady=6, fill=tk.X, padx=12)
 
-tk.Button(
-    left_frame, text="📊 Evaluate CSV (Enron)",
-    command=open_csv_and_evaluate,
-    width=20
-).pack(pady=5)
-
-
-tk.Label(left_frame, text="Threshold", bg="#e6e6e6").pack(pady=(15, 0))
+tk.Label(
+    left_frame, text="Threshold",
+    bg=BG_LEFT, fg=TEXT_SUB,
+    font=("Segoe UI", 10, "bold")
+).pack(pady=(20, 5))
 
 slider = tk.Scale(
     left_frame, from_=1, to=8,
-    orient=tk.HORIZONTAL, length=180
+    orient=tk.HORIZONTAL,
+    bg=BG_LEFT, fg=TEXT_MAIN,
+    troughcolor="#dbeafe",
+    highlightthickness=0
 )
 slider.set(2)
-slider.pack()
+slider.pack(padx=12, fill=tk.X)
 
 is_ham = tk.BooleanVar()
 tk.Checkbutton(
-    left_frame, text="This email is HAM",
+    left_frame,
+    text="This email is HAM",
     variable=is_ham,
-    bg="#e6e6e6"
+    bg=BG_LEFT,
+    fg=TEXT_MAIN,
+    activebackground=BG_LEFT,
+    font=("Segoe UI", 10)
 ).pack(pady=10)
 
-tk.Button(
-    left_frame, text="🚀 Check Spam",
-    command=check_email,
-    width=20
-).pack(pady=10)
+styled_button(left_frame, "🚀 Check Spam", check_email).pack(pady=12, fill=tk.X, padx=12)
+
 
 tk.Label(
-    left_frame, text="Statistics",
-    font=("Arial", 12, "bold"),
-    bg="#e6e6e6"
+    left_frame, text="📈 Statistics",
+    font=("Segoe UI", 12, "bold"),
+    bg=BG_LEFT, fg=TEXT_MAIN
 ).pack(pady=(20, 5))
 
 lbl_stats = tk.Label(
     left_frame,
     text="No CSV loaded",
-    bg="#e6e6e6",
-    justify=tk.LEFT
+    bg=BG_LEFT,
+    fg=TEXT_SUB,
+    justify=tk.LEFT,
+    font=("Consolas", 9)
 )
+lbl_stats.pack(padx=12, anchor="w")
 
-lbl_stats.pack()
 
 # ===== RIGHT PANEL =====
 tk.Label(
-    right_frame, text="Email Content",
-    font=("Arial", 14, "bold"),
-    bg="white"
-).pack(anchor="w", padx=10, pady=5)
+    right_frame, text="📧 Email Content",
+    font=("Segoe UI", 14, "bold"),
+    bg=BG_RIGHT, fg=TEXT_MAIN
+).pack(anchor="w", padx=12, pady=(10, 5))
 
 email_textbox = tk.Text(
-    right_frame, wrap=tk.WORD,
-    font=("Consolas", 11)
+    right_frame,
+    wrap=tk.WORD,
+    font=("Consolas", 11),
+    relief=tk.FLAT,
+    highlightbackground=BORDER,
+    highlightthickness=1
 )
-email_textbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+email_textbox.pack(fill=tk.BOTH, expand=True, padx=12, pady=5)
 
 lbl_result = tk.Label(
     right_frame,
     text="Result: ---",
-    font=("Arial", 16, "bold"),
-    bg="white"
+    font=("Segoe UI", 16, "bold"),
+    bg=BG_RIGHT,
+    fg=TEXT_MAIN
 )
-lbl_result.pack(pady=10)
+lbl_result.pack(pady=12)
 
 root.mainloop()

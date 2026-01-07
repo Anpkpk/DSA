@@ -4,12 +4,12 @@ using namespace std;
 
 int ans[2];
 
-void sum_of_2(int *a, int S, int l, int r) {
-    if (l >= r) return;
+bool sum_of_2(int *a, int S, int l, int r) {
+    if (l >= r) return false;
 
     int m = (l + r)/2;
-    sum_of_2(a, S, l, m);
-    sum_of_2(a, S, m + 1, r);
+    if (sum_of_2(a, S, l, m)) return true;
+    if (sum_of_2(a, S, m + 1, r)) return true;
 
     int i = l;
     int j = r;
@@ -18,13 +18,14 @@ void sum_of_2(int *a, int S, int l, int r) {
         if (sum == S) {
             ans[0] = a[i];
             ans[1] = a[j];
-            return;
+            return true;
         }
         else if (sum > S)
             j--;
         else 
             i++;
     }
+    return false;
 }
 
 int main() {

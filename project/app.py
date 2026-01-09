@@ -5,8 +5,8 @@ import csv
 import time
 import re
 import math
-import mmh3
 from collections import Counter
+import mmh3
 from bitarray import bitarray
 
 # ================= CONFIGURATION =================

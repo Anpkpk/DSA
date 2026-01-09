@@ -96,7 +96,7 @@ class NaiveBayes:
         
         self.vocab.update(tokens)
 
-    def predict(self, text):
+    def predict(self, text, margin=-1.2):
         """Predict class for given text"""
         # Check if model is trained
         if self.spam_total == 0 and self.ham_total == 0:
@@ -124,7 +124,7 @@ class NaiveBayes:
             log_spam += math.log(p_token_spam)
             log_ham += math.log(p_token_ham)
 
-        return "spam" if log_spam > log_ham else "ham"
+        return "spam" if (log_spam - log_ham) > margin else "ham"
     
     def predict_proba(self, text):
         """Return probability scores"""
@@ -219,8 +219,8 @@ def train_nb_from_csv(path, limit=None):
                     break
                 
                 # Handle missing columns gracefully
-                subject = row.get('Subject', '')
-                message = row.get('Message', '')
+                subject = row.get('Subject', '').lower().strip()
+                message = row.get('Message', '').lower().strip()
                 spam_ham = row.get('Spam/Ham', '').lower().strip()
                 
                 if not spam_ham:
@@ -309,97 +309,74 @@ def is_internal_enron_mail(text):
     hits = sum(bool(re.search(p, text, re.I)) for p in patterns)
     return hits >= 2
 
+def predict_hybrid(text, bloom_threshold, base_margin=-0.2, boost_margin=-1.5):
+    """
+    Hybrid Bloom + Naive Bayes
+    Bloom điều chỉnh margin của NB, KHÔNG chặn NB
+    """
+    score = bloom_score(text)
+
+    # Bloom càng cao → càng nới tay cho spam
+    if score >= bloom_threshold:
+        margin = boost_margin   # bắt spam mạnh
+    else:
+        margin = base_margin    # bảo thủ hơn
+    return nb.predict(text, margin=margin)
+
+
 # ================= EVALUATION =================
-def evaluate_csv(path, threshold, mode="bloom"):
-    """Evaluate model on CSV dataset"""
+def evaluate_csv(path, bloom_threshold):
     start = time.time()
     total = correct = fp = fn = ham_count = spam_count = 0
 
-    try:
-        with open(path, newline='', encoding="utf-8", errors="ignore") as f:
-            reader = csv.DictReader(f)
-            
-            # Check if required columns exist
-            first_row = next(reader, None)
-            if first_row is None:
-                raise ValueError("CSV file is empty")
-            
-            # Check columns
-            if 'Subject' not in first_row or 'Message' not in first_row or 'Spam/Ham' not in first_row:
-                raise ValueError(f"CSV must have 'Subject', 'Message', and 'Spam/Ham' columns.\nFound: {list(first_row.keys())}")
-            
-            # Reset file pointer
-            f.seek(0)
-            reader = csv.DictReader(f)
-            
-            for row in reader:
-                subject = row.get('Subject', '')
-                message = row.get('Message', '')
-                spam_ham = row.get('Spam/Ham', '').lower().strip()
-                
-                if not spam_ham:
-                    continue
-                
-                text = f"{subject} {message}"
-                true_spam = (spam_ham == "spam")
+    with open(path, newline='', encoding="utf-8", errors="ignore") as f:
+        reader = csv.DictReader(f)
 
-                score = bloom_score(text)
+        for row in reader:
+            subject = row.get("Subject", "").lower().strip()
+            message = row.get("Message", "").lower().strip()
+            label = row.get("Spam/Ham", "").lower().strip()
 
-                if mode == "bloom":
-                    pred_spam = (score >= threshold)
-                else:  # hybrid mode
-                    if score < threshold:
-                        pred_spam = False
-                    else:
-                        pred_spam = (nb.predict(text) == "spam")
+            if label not in ("spam", "ham"):
+                continue
 
-                total += 1
-                if pred_spam == true_spam:
-                    correct += 1
-                
-                if true_spam:
-                    spam_count += 1
-                    if not pred_spam:
-                        fn += 1
-                else:
-                    ham_count += 1
-                    if pred_spam:
-                        fp += 1
+            text = f"{subject} {message}"
+            true_spam = (label == "spam")
 
-        if total == 0:
-            raise ValueError("No valid emails found in CSV")
+            pred_spam = (
+                predict_hybrid(
+                    text,
+                    bloom_threshold=bloom_threshold
+                ) == "spam"
+            )
 
-        accuracy = correct / total
-        fpr = fp / ham_count if ham_count > 0 else 0
-        fnr = fn / spam_count if spam_count > 0 else 0
-        
-        tp = spam_count - fn
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
-        recall = tp / spam_count if spam_count > 0 else 0
-        f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-        
-        elapsed = time.time() - start
-        
-        return {
-            "total": total,
-            "correct": correct,
-            "accuracy": accuracy,
-            "fpr": fpr,
-            "fnr": fnr,
-            "precision": precision,
-            "recall": recall,
-            "f1": f1,
-            "time": elapsed,
-            "ham": ham_count,
-            "spam": spam_count,
-            "fp": fp,
-            "fn": fn
-        }
-    except Exception as e:
-        print(f"Error evaluating CSV: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
+            total += 1
+            correct += (pred_spam == true_spam)
+
+            if true_spam:
+                spam_count += 1
+                fn += (not pred_spam)
+            else:
+                ham_count += 1
+                fp += pred_spam
+
+    tp = spam_count - fn
+    precision = tp / (tp + fp) if tp + fp > 0 else 0
+    recall = tp / spam_count if spam_count > 0 else 0
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
+    accuracy = correct / total if total > 0 else 0
+    elapsed = time.time() - start
+    stats = {
+        "total": total,
+        "ham": ham_count,
+        "spam": spam_count, 
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "time": elapsed
+    }
+    return stats
 
 # ================= GUI COMPONENTS =================
 class SpamDetectorGUI:
@@ -437,10 +414,10 @@ class SpamDetectorGUI:
         tk.Label(
             left_panel,
             text="⚙️ Control Panel",
-            font=("Segoe UI", 16, "bold"),
+            font=("Segoe UI", 12, "bold"),
             bg=BG_PANEL,
             fg=TEXT_PRIMARY
-        ).pack(pady=(16, 20))
+        ).pack(pady=(10, 8))
         
         # File operations section
         self.create_section_label(left_panel, "📁 File Operations")
@@ -460,15 +437,15 @@ class SpamDetectorGUI:
         )
         
         # Threshold section
-        self.create_section_label(left_panel, "🎯 Detection Threshold", pady_top=20)
+        self.create_section_label(left_panel, "🎯 Detection Threshold", pady_top=12)
         
         threshold_frame = tk.Frame(left_panel, bg=BG_PANEL)
-        threshold_frame.pack(fill=tk.X, padx=16, pady=8)
+        threshold_frame.pack(fill=tk.X, padx=14, pady=6)
         
-        self.threshold_var = tk.IntVar(value=3)
+        self.threshold_var = tk.IntVar(value=1)
         self.threshold_label = tk.Label(
             threshold_frame,
-            text="Threshold: 3",
+            text="Threshold: 1",
             font=("Segoe UI", 10),
             bg=BG_PANEL,
             fg=TEXT_SECONDARY
@@ -492,12 +469,12 @@ class SpamDetectorGUI:
         self.threshold_scale.pack(fill=tk.X, pady=4)
         
         # Mode selection
-        self.create_section_label(left_panel, "🔧 Detection Mode", pady_top=16)
+        self.create_section_label(left_panel, "🔧 Detection Mode", pady_top=8)
         
         self.mode_var = tk.StringVar(value="hybrid")
         
         mode_frame = tk.Frame(left_panel, bg=BG_PANEL)
-        mode_frame.pack(fill=tk.X, padx=16, pady=8)
+        mode_frame.pack(fill=tk.X, padx=14, pady=8)
         
         tk.Radiobutton(
             mode_frame,
@@ -528,12 +505,12 @@ class SpamDetectorGUI:
             left_panel,
             "🚀 Detect Spam",
             self.check_email,
-            pady=20,
+            pady=12,
             bg=SUCCESS
         )
         
         # Statistics section
-        self.create_section_label(left_panel, "📈 Statistics", pady_top=16)
+        self.create_section_label(left_panel, "📈 Statistics", pady_top=8)
         
         self.stats_label = tk.Label(
             left_panel,
@@ -553,19 +530,19 @@ class SpamDetectorGUI:
         
         # Header
         header_frame = tk.Frame(right_panel, bg=BG_PANEL)
-        header_frame.pack(fill=tk.X, padx=16, pady=(16, 8))
+        header_frame.pack(fill=tk.X, padx=14, pady=(14, 8))
         
         tk.Label(
             header_frame,
             text="📧 Email Content",
-            font=("Segoe UI", 16, "bold"),
+            font=("Segoe UI", 14, "bold"),
             bg=BG_PANEL,
             fg=TEXT_PRIMARY
         ).pack(side=tk.LEFT)
         
         # Text editor
         text_frame = tk.Frame(right_panel, bg=BG_INPUT)
-        text_frame.pack(fill=tk.BOTH, expand=True, padx=16, pady=8)
+        text_frame.pack(fill=tk.BOTH, expand=True, padx=14, pady=8)
         
         self.email_text = tk.Text(
             text_frame,
@@ -606,12 +583,12 @@ class SpamDetectorGUI:
         )
         self.detail_label.pack()
         
-    def create_section_label(self, parent, text, pady_top=16):
+    def create_section_label(self, parent, text, pady_top=12):
         """Create section header label"""
         tk.Label(
             parent,
             text=text,
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 10, "bold"),
             bg=BG_PANEL,
             fg=TEXT_SECONDARY
         ).pack(pady=(pady_top, 4))
@@ -627,7 +604,7 @@ class SpamDetectorGUI:
             font=("Segoe UI", 10, "bold"),
             relief=tk.FLAT,
             padx=16,
-            pady=10,
+            pady=6,
             cursor="hand2",
             activebackground=ACCENT_HOVER,
             activeforeground="white"
@@ -747,7 +724,7 @@ class SpamDetectorGUI:
         self.root.update()
         
         # Evaluate
-        results = evaluate_csv(path, threshold, mode)
+        results = evaluate_csv(path, threshold)
         
         if results is None:
             messagebox.showerror("Error", "Failed to evaluate dataset.\nCheck console for details.")
@@ -756,8 +733,6 @@ class SpamDetectorGUI:
         
         # Display results
         stats_text = (
-            f"Dataset Evaluation Results\n"
-            f"{'─' * 30}\n"
             f"Total emails: {results['total']}\n"
             f"  • HAM: {results['ham']}\n"
             f"  • SPAM: {results['spam']}\n"
@@ -766,14 +741,7 @@ class SpamDetectorGUI:
             f"Precision: {results['precision']:.2%}\n"
             f"Recall: {results['recall']:.2%}\n"
             f"F1-Score: {results['f1']:.2%}\n"
-            f"{'─' * 30}\n"
-            f"False Positive: {results['fp']}/{results['ham']}\n"
-            f"FP Rate: {results['fpr']:.2%}\n"
-            f"False Negative: {results['fn']}/{results['spam']}\n"
-            f"FN Rate: {results['fnr']:.2%}\n"
-            f"{'─' * 30}\n"
-            f"Time: {results['time']:.2f}s\n"
-            f"Mode: {mode.upper()}"
+            f"Time: {results['time']:.3f} s\n"
         )
         
         self.stats_label.config(text=stats_text)

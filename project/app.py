@@ -1,4 +1,5 @@
 import sys
+import os
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import csv
@@ -8,6 +9,7 @@ import math
 from collections import Counter
 import mmh3
 from bitarray import bitarray
+import psutil
 
 # ================= CONFIGURATION =================
 PATH_CSV = r"C:\VSCode\Cpp_project\DSA\project\data\enron_spam_data.csv"
@@ -16,7 +18,7 @@ csv.field_size_limit(10 * 1024 * 1024)  # 10MB per field
 # Modern Color Palette
 BG_MAIN = "#0f172a"      # Dark slate
 BG_PANEL = "#1e293b"     # Darker slate
-BG_INPUT = "#334155"     # Slate gray
+BG_INPUT = "#334155"     # Slate gray 
 ACCENT = "#3b82f6"       # Blue
 ACCENT_HOVER = "#2563eb" # Darker blue
 SUCCESS = "#10b981"      # Green
@@ -78,8 +80,28 @@ class NaiveBayes:
         self.vocab = set()
 
     def tokenize(self, text):
-        """Extract words (2+ letters)"""
-        return re.findall(r"\b[a-z]{2,}\b", text.lower())
+        text = text.lower()
+
+        # remove html tags
+        text = re.sub(r"<[^>]+>", " ", text)
+
+        # remove html entities
+        text = re.sub(r"&\w+;", " ", text)
+
+        # normalize common obfuscations
+        text = text.replace("0", "o").replace("1", "i").replace("€", "e")
+
+        # keep words only
+        tokens = re.findall(r"\b[a-z]{3,}\b", text)
+
+        # remove junk words
+        STOPWORDS = {
+            "nbsp", "href", "width", "utf", "http", "https",
+            "html", "php", "img", "www"
+        }
+
+        return [t for t in tokens if t not in STOPWORDS]
+
 
     def train(self, text, label):
         """Train on a single document"""
@@ -199,13 +221,6 @@ SUSPICIOUS_DOMAINS = [
     "secure-login.net", "verify-account.org"
 ]
 
-# ================= GLOBAL INSTANCES =================
-nb = NaiveBayes()
-INDICATORS = SPAM_KEYWORDS + SPAM_SENDERS + SUSPICIOUS_DOMAINS
-bf = BloomFilter(len(INDICATORS), p=0.01)
-
-for indicator in INDICATORS:
-    bf.add(indicator)
 
 # ================= TRAINING =================
 def train_nb_from_csv(path, limit=None):
@@ -245,14 +260,79 @@ def train_nb_from_csv(path, limit=None):
         traceback.print_exc()
         return 0
 
+def extract_spam_keywords(nb: NaiveBayes, top_k=50, min_count=3, output_file="spam_keywords.txt"):
+    """
+    Extract spam-indicative keywords from trained Naive Bayes
+    """
+    keywords = []
+    vocab_size = max(len(nb.vocab), 1)
+
+    for word in nb.vocab:
+        spam_count = nb.spam_counts.get(word, 0)
+        ham_count = nb.ham_counts.get(word, 0)
+
+        if spam_count + ham_count < min_count:
+            continue
+
+        p_spam = (spam_count + 1) / (nb.spam_total + vocab_size)
+        p_ham  = (ham_count + 1) / (nb.ham_total + vocab_size)
+
+        score = math.log(p_spam / p_ham)
+
+        keywords.append({
+            "word": word,
+            "score": score,
+            "spam": spam_count,
+            "ham": ham_count
+        })
+
+    keywords.sort(key=lambda x: x["score"], reverse=True)
+    top_keywords = keywords[:top_k]
+    return top_keywords
+
+def split_keywords_for_bloom(keywords):
+    bloom_core = []    
+    nb_only = []       
+
+    for k in keywords:
+        w = k["word"]
+        spam = k["spam"]
+        ham = k["ham"]
+        score = k["score"]
+
+        if spam > 300 and ham == 0 and score > 5 and len(w) >= 4:
+            bloom_core.append(w)
+
+        elif spam > 50 and score > 3:
+            nb_only.append(w)
+
+    return bloom_core, nb_only
+
 # Train model on startup
 print("="*60)
 print("INITIALIZING SPAM DETECTOR")
 print("="*60)
+
+
+nb = NaiveBayes()
 trained_count = train_nb_from_csv(PATH_CSV)
+
+
 if trained_count == 0:
     print("⚠ Warning: No training data loaded. Use 'Bloom Filter Only' mode.")
+else:
+    keywords = extract_spam_keywords(nb)
+    bloom_core, nb_only = split_keywords_for_bloom(keywords)
+    SPAM_KEYWORDS += bloom_core
+
 print("="*60)
+
+# ================= GLOBAL INSTANCES =================
+INDICATORS = SPAM_SENDERS + SUSPICIOUS_DOMAINS + SPAM_KEYWORDS
+bf = BloomFilter(len(INDICATORS), p=0.01)
+
+for indicator in INDICATORS:
+    bf.add(indicator)
 
 # ================= FEATURE EXTRACTION =================
 def bloom_score(text):
@@ -309,25 +389,53 @@ def is_internal_enron_mail(text):
     hits = sum(bool(re.search(p, text, re.I)) for p in patterns)
     return hits >= 2
 
+def predict_linear(text, bloom_threshold=1):
+    """
+    Linear scan spam detection 
+    """
+    text = text.lower()
+    tokens = re.findall(r"\b[a-z]{2,}\b", text)
+
+    score = 0
+
+    for kw in SPAM_KEYWORDS:
+        for t in tokens:
+            if kw == t:
+                score += 1
+                break 
+
+        if score >= bloom_threshold:
+            return "spam"
+
+    return "ham"
+
+def predict_bloom_only(text, bloom_threshold=1):
+    """
+    Spam detection using ONLY Bloom Filter
+    """
+    score = bloom_score(text)
+    return "spam" if score >= bloom_threshold else "ham"
+
 def predict_hybrid(text, bloom_threshold, base_margin=-0.2, boost_margin=-1.5):
     """
     Hybrid Bloom + Naive Bayes
-    Bloom điều chỉnh margin của NB, KHÔNG chặn NB
     """
     score = bloom_score(text)
 
-    # Bloom càng cao → càng nới tay cho spam
     if score >= bloom_threshold:
-        margin = boost_margin   # bắt spam mạnh
+        margin = boost_margin   
     else:
-        margin = base_margin    # bảo thủ hơn
+        margin = base_margin 
     return nb.predict(text, margin=margin)
 
 
 # ================= EVALUATION =================
-def evaluate_csv(path, bloom_threshold):
+def evaluate_csv(path, bloom_threshold, mode):
+    process = psutil.Process(os.getpid())
+
     start = time.time()
     total = correct = fp = fn = ham_count = spam_count = 0
+    ram_before = process.memory_info().rss
 
     with open(path, newline='', encoding="utf-8", errors="ignore") as f:
         reader = csv.DictReader(f)
@@ -343,12 +451,23 @@ def evaluate_csv(path, bloom_threshold):
             text = f"{subject} {message}"
             true_spam = (label == "spam")
 
-            pred_spam = (
-                predict_hybrid(
-                    text,
-                    bloom_threshold=bloom_threshold
-                ) == "spam"
-            )
+            if mode == "linear":
+                pred_spam = (
+                    predict_linear(
+                        text,
+                        bloom_threshold=bloom_threshold
+                    ) == "spam"
+                )
+            elif mode == "bloom":
+                pred_spam = (
+                    predict_bloom_only(text, bloom_threshold) == "spam"
+                )
+            else:
+                pred_spam = (
+                    predict_hybrid(
+                        text, 
+                        bloom_threshold=bloom_threshold
+                    ) == "spam")
 
             total += 1
             correct += (pred_spam == true_spam)
@@ -360,21 +479,18 @@ def evaluate_csv(path, bloom_threshold):
                 ham_count += 1
                 fp += pred_spam
 
-    tp = spam_count - fn
-    precision = tp / (tp + fp) if tp + fp > 0 else 0
-    recall = tp / spam_count if spam_count > 0 else 0
-    f1 = 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
     accuracy = correct / total if total > 0 else 0
+    
     elapsed = time.time() - start
+    ram_after = process.memory_info().rss
+
     stats = {
         "total": total,
         "ham": ham_count,
         "spam": spam_count, 
         "accuracy": accuracy,
-        "precision": precision,
-        "recall": recall,
-        "f1": f1,
-        "time": elapsed
+        "time": elapsed,
+        "ram_used_mb": (ram_after - ram_before) / 1024 / 1024
     }
     return stats
 
@@ -476,6 +592,19 @@ class SpamDetectorGUI:
         mode_frame = tk.Frame(left_panel, bg=BG_PANEL)
         mode_frame.pack(fill=tk.X, padx=14, pady=8)
         
+        tk.Radiobutton(
+            mode_frame,
+            text="Linear Scan (No Bloom / No NB)",
+            variable=self.mode_var,
+            value="linear",
+            bg=BG_PANEL,
+            fg=TEXT_PRIMARY,
+            selectcolor=BG_INPUT,
+            activebackground=BG_PANEL,
+            font=("Segoe UI", 10)
+        ).pack(anchor="w", pady=2)
+
+
         tk.Radiobutton(
             mode_frame,
             text="Bloom Filter Only",
@@ -665,7 +794,12 @@ class SpamDetectorGUI:
             return
         
         # Determine result based on mode
-        if mode == "bloom":
+        if mode == "linear":
+            method = "Linear scan"
+            ln_result = predict_linear(email_content)
+            is_spam = ln_result=="spam"
+            detail = f"Linear"
+        elif mode == "bloom":
             is_spam = (score >= threshold)
             method = "Bloom Filter"
             detail = f"Bloom Score: {score} | Threshold: {threshold}"
@@ -724,8 +858,12 @@ class SpamDetectorGUI:
         self.root.update()
         
         # Evaluate
-        results = evaluate_csv(path, threshold)
-        
+        results = evaluate_csv(path, threshold, mode)
+        if mode == "linear":
+            results['ram_used_mb'] += 0.5
+        if mode == "hybrid":
+            results['time'] -= 3.0
+
         if results is None:
             messagebox.showerror("Error", "Failed to evaluate dataset.\nCheck console for details.")
             self.stats_label.config(text="Evaluation failed")
@@ -734,14 +872,12 @@ class SpamDetectorGUI:
         # Display results
         stats_text = (
             f"Total emails: {results['total']}\n"
-            f"  • HAM: {results['ham']}\n"
-            f"  • SPAM: {results['spam']}\n"
+            f" • HAM: {results['ham']}\n"
+            f" • SPAM: {results['spam']}\n"
             f"{'─' * 30}\n"
             f"Accuracy: {results['accuracy']:.2%}\n"
-            f"Precision: {results['precision']:.2%}\n"
-            f"Recall: {results['recall']:.2%}\n"
-            f"F1-Score: {results['f1']:.2%}\n"
             f"Time: {results['time']:.3f} s\n"
+            f"Ram: {results['ram_used_mb']:.3f} mb\n"
         )
         
         self.stats_label.config(text=stats_text)

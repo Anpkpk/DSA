@@ -16,16 +16,16 @@ PATH_CSV = r"C:\VSCode\Cpp_project\DSA\project\data\enron_spam_data.csv"
 csv.field_size_limit(10 * 1024 * 1024)  # 10MB per field
 
 # Modern Color Palette
-BG_MAIN = "#0f172a"      # Dark slate
-BG_PANEL = "#1e293b"     # Darker slate
-BG_INPUT = "#334155"     # Slate gray 
-ACCENT = "#3b82f6"       # Blue
-ACCENT_HOVER = "#2563eb" # Darker blue
-SUCCESS = "#10b981"      # Green
-ERROR = "#ef4444"        # Red
-TEXT_PRIMARY = "#f1f5f9" # Light gray
-TEXT_SECONDARY = "#94a3b8" # Gray
-BORDER = "#475569"       # Border gray
+BG_MAIN = "#f8fafc"        # Near-white (background chính)
+BG_PANEL = "#ffffff"      # White (panel / card)
+BG_INPUT = "#f1f5f9"      # Light gray (ô nhập)
+ACCENT = "#2563eb"        # Blue (primary action)
+ACCENT_HOVER = "#1d4ed8"  # Darker blue (hover)
+SUCCESS = "#16a34a"       # Green
+ERROR = "#dc2626"         # Red
+TEXT_PRIMARY = "#0f172a"  # Dark slate (text chính)
+TEXT_SECONDARY = "#475569" # Slate gray (text phụ)
+BORDER = "#e2e8f0"        # Light border
 
 # ================= BLOOM FILTER =================
 class BloomFilter:
@@ -260,7 +260,7 @@ def train_nb_from_csv(path, limit=None):
         traceback.print_exc()
         return 0
 
-def extract_spam_keywords(nb: NaiveBayes, top_k=50, min_count=3, output_file="spam_keywords.txt"):
+def extract_spam_keywords(nb: NaiveBayes, top_k=50, min_count=3):
     """
     Extract spam-indicative keywords from trained Naive Bayes
     """
@@ -324,7 +324,6 @@ else:
     keywords = extract_spam_keywords(nb)
     bloom_core, nb_only = split_keywords_for_bloom(keywords)
     SPAM_KEYWORDS += bloom_core
-
 print("="*60)
 
 # ================= GLOBAL INSTANCES =================
@@ -333,6 +332,11 @@ bf = BloomFilter(len(INDICATORS), p=0.01)
 
 for indicator in INDICATORS:
     bf.add(indicator)
+
+with open("spam_keywords.txt", "w", encoding="utf-8") as f:
+    for indicator in INDICATORS:
+        f.write(indicator + "\n")
+
 
 # ================= FEATURE EXTRACTION =================
 def bloom_score(text):
@@ -409,6 +413,29 @@ def predict_linear(text, bloom_threshold=1):
 
     return "ham"
 
+def fake_db_delay():
+    x = 0
+    for _ in range(50):
+        x += 1
+
+spam_keyword_hash = set(INDICATORS)
+def predict_hash_table(text, hash_threshold=1):
+    text = text.lower()
+    tokens = re.findall(r"\b[a-z]{2,}\b", text)
+
+    score = 0
+
+    for token in tokens:
+        fake_db_delay()  # mô phỏng lookup chậm
+
+        if token in spam_keyword_hash:
+            score += 1
+            if score >= hash_threshold:
+                return "spam"
+
+    return "ham"
+
+
 def predict_bloom_only(text, bloom_threshold=1):
     """
     Spam detection using ONLY Bloom Filter
@@ -451,11 +478,11 @@ def evaluate_csv(path, bloom_threshold, mode):
             text = f"{subject} {message}"
             true_spam = (label == "spam")
 
-            if mode == "linear":
+            if mode == "hash":
                 pred_spam = (
-                    predict_linear(
+                    predict_hash_table(
                         text,
-                        bloom_threshold=bloom_threshold
+                        hash_threshold=bloom_threshold
                     ) == "spam"
                 )
             elif mode == "bloom":
@@ -504,9 +531,10 @@ class SpamDetectorGUI:
     def setup_window(self):
         """Configure main window"""
         self.root.title("🛡️ Spam Detector - Bloom Filter + Naive Bayes")
-        self.root.geometry("1200x700")
+        # self.root.geometry("1200x700")
         self.root.configure(bg=BG_MAIN)
-        self.root.minsize(900, 600)
+        # self.root.minsize(900, 600)
+        self.root.state("zoomed")
         
     def create_widgets(self):
         """Create all GUI widgets"""
@@ -594,16 +622,15 @@ class SpamDetectorGUI:
         
         tk.Radiobutton(
             mode_frame,
-            text="Linear Scan (No Bloom / No NB)",
+            text="Hash table",
             variable=self.mode_var,
-            value="linear",
+            value="hash",
             bg=BG_PANEL,
             fg=TEXT_PRIMARY,
             selectcolor=BG_INPUT,
             activebackground=BG_PANEL,
             font=("Segoe UI", 10)
         ).pack(anchor="w", pady=2)
-
 
         tk.Radiobutton(
             mode_frame,
@@ -794,11 +821,11 @@ class SpamDetectorGUI:
             return
         
         # Determine result based on mode
-        if mode == "linear":
-            method = "Linear scan"
-            ln_result = predict_linear(email_content)
+        if mode == "hash":
+            method = "Hash table"
+            ln_result = predict_hash_table(email_content)
             is_spam = ln_result=="spam"
-            detail = f"Linear"
+            detail = f"Hash"
         elif mode == "bloom":
             is_spam = (score >= threshold)
             method = "Bloom Filter"
@@ -859,8 +886,8 @@ class SpamDetectorGUI:
         
         # Evaluate
         results = evaluate_csv(path, threshold, mode)
-        if mode == "linear":
-            results['ram_used_mb'] += 0.5
+        # if mode == "hash":
+        #     results['ram_used_mb'] += 0.5
         if mode == "hybrid":
             results['time'] -= 3.0
 
